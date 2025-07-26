@@ -2,35 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* HealthHabit Medical Design System - All colors, gradients, fonts, etc defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 25% 97%;
+    --foreground: 220 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 210 100% 70%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 150 60% 50%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 180 100% 40%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Medical specific colors */
+    --medical-blue: 210 100% 50%;
+    --medical-green: 150 60% 50%;
+    --medical-teal: 180 100% 40%;
+    --trust-blue: 220 40% 60%;
+    --health-mint: 160 40% 85%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-medical: linear-gradient(135deg, hsl(var(--medical-blue)), hsl(var(--medical-teal)));
+    --gradient-health: linear-gradient(180deg, hsl(var(--health-mint)), hsl(var(--background)));
+    --gradient-trust: linear-gradient(45deg, hsl(var(--trust-blue) / 0.1), hsl(var(--medical-blue) / 0.1));
+
+    /* Shadows */
+    --shadow-medical: 0 4px 20px hsl(var(--medical-blue) / 0.15);
+    --shadow-soft: 0 2px 10px hsl(var(--foreground) / 0.1);
+    --shadow-elevated: 0 8px 30px hsl(var(--foreground) / 0.12);
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;

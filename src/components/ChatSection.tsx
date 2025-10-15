@@ -1,206 +1,209 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles,
-  MessageCircle,
-  Loader2
-} from "lucide-react";
+import { Send, Bot, User, Sparkles, Heart, Shield, Zap } from "lucide-react";
 
 interface Message {
   id: string;
-  content: string;
-  sender: 'user' | 'ai';
+  text: string;
+  sender: "user" | "ai";
   timestamp: Date;
 }
 
-const sampleMessages: Message[] = [
-  {
-    id: '1',
-    content: "Hello! I'm your HealthHabit AI assistant. How can I help you with your health concerns today?",
-    sender: 'ai',
-    timestamp: new Date(Date.now() - 60000)
-  }
-];
+const initialMessage: Message = {
+  id: "1",
+  text: "Hello! I'm your AI health assistant powered by Gemini. How can I help you today?",
+  sender: "ai",
+  timestamp: new Date(),
+};
 
-const quickQuestions = [
-  "What are the symptoms of flu?",
-  "Tell me about diabetes",
-  "Side effects of aspirin",
-  "Find hospitals near me"
-];
+// Gemini API configuration
+const API_KEY = "AIzaSyA-faC3lnwpQOh0JepehQXAs3exQop9-bU"; // ← replace this with your real key
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
 
-export const ChatSection = () => {
-  const [messages, setMessages] = useState<Message[]>(sampleMessages);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+// Conversation history for Gemini API
+let conversationHistory: { role: string; parts: { text: string }[] }[] = [];
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+export const ChatSection: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([initialMessage]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: input,
-      sender: 'user',
-      timestamp: new Date()
-    };
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I understand your concern. While I can provide general health information, please remember that this is not a substitute for professional medical advice. For your symptoms, I recommend consulting with a healthcare provider for proper diagnosis and treatment.",
-        sender: 'ai',
-        timestamp: new Date()
+    const userMessage: Message = { id: Date.now().toString(), text: inputValue, sender: "user", timestamp: new Date() };
+    setMessages((p) => [...p, userMessage]);
+    setInputValue("");
+    setIsTyping(true);
+
+    // Add user message to Gemini conversation history
+    conversationHistory.push({ role: "user", parts: [{ text: inputValue }] });
+
+    const systemPrompt = `
+You are "Health Companion", a friendly AI health chatbot.
+You are NOT a doctor — always remind the user of this when they ask for treatment or diagnosis.
+Give short, clear answers in simple language.
+If user mentions an emergency, tell them to contact a doctor immediately.
+`;
+
+    try {
+      // First try using Gemini API directly
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: conversationHistory,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Gemini API response:", data);
+
+      if (response.ok && data?.candidates?.length > 0) {
+        const botText = data.candidates[0].content.parts[0].text;
+        const aiMessageId = (Date.now() + 1).toString();
+        setMessages((p) => [...p, { id: aiMessageId, text: botText, sender: "ai", timestamp: new Date() }]);
+        conversationHistory.push({ role: "model", parts: [{ text: botText }] });
+        setIsTyping(false);
+        return;
+      }
+      
+      // If Gemini API fails, fall back to the original implementation
+      const streamRes = await fetch(`/api/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: inputValue }),
+      });
+
+      if (!streamRes.ok) throw new Error("Streaming endpoint returned error");
+
+      const aiMessageId = (Date.now() + 1).toString();
+      setMessages((p) => [...p, { id: aiMessageId, text: "", sender: "ai", timestamp: new Date() }]);
+
+      const reader = streamRes.body?.getReader();
+      if (!reader) throw new Error("ReadableStream not supported");
+      const decoder = new TextDecoder();
+      let partial = "";
+
+      const appendToAI = (delta: string) => {
+        partial += delta;
+        setMessages((p) => p.map((m) => (m.id === aiMessageId ? { ...m, text: partial } : m)));
       };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsLoading(false);
-    }, 2000);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const events = chunk.split(/\n\n/).filter(Boolean);
+        for (const ev of events) {
+          const line = ev.trim();
+          const dataLine = line.startsWith("data:") ? line.slice(5).trim() : line;
+          try {
+            const parsed: any = JSON.parse(dataLine);
+            if (parsed.delta) appendToAI(parsed.delta);
+            else if (parsed.done && parsed.text) {
+              const remainder = parsed.text.startsWith(partial) ? parsed.text.slice(partial.length) : parsed.text;
+              if (remainder) appendToAI(remainder);
+            }
+          } catch (e) {
+            appendToAI(dataLine);
+          }
+        }
+      }
+
+      setIsTyping(false);
+      setMessages((p) => p.map((m) => (m.text === "" && m.sender === "ai" ? { ...m, timestamp: new Date() } : m)));
+    } catch (err) {
+      console.error("Streaming failed, falling back to non-streaming API", err);
+      try {
+        const fallback = await fetch(`/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: inputValue }),
+        });
+        if (!fallback.ok) throw new Error("Fallback endpoint failed");
+        const data = await fallback.json();
+        setMessages((p) => [...p, { id: (Date.now() + 2).toString(), text: data.response || "", sender: "ai", timestamp: new Date() }]);
+      } catch (fallbackErr) {
+        console.error("Fallback also failed:", fallbackErr);
+        setMessages((p) => [...p, { id: (Date.now() + 3).toString(), text: "I'm sorry, I encountered an error processing your request. Please check if the server is running at http://localhost:3001 and try again.", sender: "ai", timestamp: new Date() }]);
+      }
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  const handleQuickQuestion = (question: string) => {
-    setInput(question);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <section id="chat" className="py-20 bg-gradient-health">
-      <div className="container">
-        <div className="text-center space-y-4 mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-medical-blue/10 border border-medical-blue/20">
-            <MessageCircle className="h-4 w-4 text-medical-blue" />
-            <span className="text-sm font-medium text-medical-blue">AI Health Assistant</span>
-          </div>
-          
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-            Chat with Your
-            <span className="bg-gradient-medical bg-clip-text text-transparent"> AI Assistant</span>
-          </h2>
-          
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Get instant answers to your health questions with our AI-powered assistant. 
-            Available 24/7 to provide trusted medical information.
-          </p>
+    <Card className="flex flex-col h-[600px] w-full max-w-3xl mx-auto">
+      <div className="flex items-center justify-between bg-primary p-4 rounded-t-lg">
+        <div className="flex items-center space-x-2">
+          <Bot className="h-6 w-6 text-primary-foreground" />
+          <h3 className="text-lg font-medium text-primary-foreground">Health Assistant</h3>
         </div>
-
-        <div className="max-w-4xl mx-auto">
-          <Card className="h-[600px] flex flex-col shadow-elevated border-0 bg-card/80 backdrop-blur-sm">
-            {/* Chat Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-border/50 bg-gradient-trust rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-medical-blue">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">HealthHabit AI</h3>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-medical-green rounded-full"></div>
-                    <span className="text-xs text-muted-foreground">Online</span>
-                  </div>
-                </div>
-              </div>
-              <div className="ml-auto">
-                <Sparkles className="h-5 w-5 text-medical-blue animate-pulse" />
-              </div>
-            </div>
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`flex items-start gap-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`p-2 rounded-lg ${
-                        message.sender === 'user' 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-foreground'
-                      }`}>
-                        {message.sender === 'user' ? (
-                          <User className="h-4 w-4" />
-                        ) : (
-                          <Bot className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div className={`p-3 rounded-lg ${
-                        message.sender === 'user'
-                          ? 'bg-gradient-medical text-white'
-                          : 'bg-card border border-border/50'
-                      }`}>
-                        <p className="text-sm">{message.content}</p>
-                        <span className="text-xs opacity-70 mt-1 block">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="flex items-start gap-2">
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Bot className="h-4 w-4" />
-                      </div>
-                      <div className="p-3 rounded-lg bg-card border border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm text-muted-foreground">AI is typing...</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Quick Questions */}
-            <div className="p-4 border-t border-border/50">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {quickQuestions.map((question, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickQuestion(question)}
-                    className="text-xs"
-                  >
-                    {question}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Input */}
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about symptoms, diseases, medications..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleSend} 
-                  disabled={!input.trim() || isLoading}
-                  variant="medical"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
+        <div className="flex space-x-2">
+          <Sparkles className="h-5 w-5 text-primary-foreground opacity-80" />
+          <Heart className="h-5 w-5 text-primary-foreground opacity-80" />
+          <Shield className="h-5 w-5 text-primary-foreground opacity-80" />
         </div>
       </div>
-    </section>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === "user" ? "flex-row-reverse space-x-reverse" : ""}`}>
+              <div className={`p-1 rounded-full ${message.sender === "user" ? "bg-primary" : "bg-muted"}`}>
+                {message.sender === "user" ? <User className="h-6 w-6 text-primary-foreground" /> : <Bot className="h-6 w-6" />}
+              </div>
+              <div className={`p-3 rounded-lg ${message.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                <p className="whitespace-pre-wrap">{message.text}</p>
+                <p className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-muted p-3 rounded-lg">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-4 border-t">
+        <div className="flex space-x-2">
+          <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyPress={handleKeyPress} placeholder="Type your health question..." className="flex-1" disabled={isTyping} />
+          <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping} className="bg-primary hover:bg-primary/90">
+            <Send className="h-4 w-4" />
+            <span className="sr-only">Send</span>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          <Zap className="inline h-3 w-3 mr-1" />
+          Powered by Gemini AI. For informational purposes only, not medical advice.
+        </p>
+      </div>
+    </Card>
   );
 };

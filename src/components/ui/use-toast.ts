@@ -1,3 +1,11 @@
-import { useToast, toast } from "@/hooks/use-toast";
+import { toast } from "sonner"
 
-export { useToast, toast };
+export { toast }
+
+export function useToast() {
+  return {
+    toasts: [],
+    toast,
+    dismiss: (toastId?: string) => toast.dismiss(toastId),
+  }
+}

@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Shield, Clock, Heart } from "lucide-react";
 import heroImage from "@/assets/health-hero.jpg";
+import { useNavigate } from "react-router-dom";
 
 export const HeroSection = () => {
+  const navigate = useNavigate();
   return (
     <section className="relative min-h-[600px] bg-gradient-health flex items-center overflow-hidden">
       <div className="container relative z-10">
@@ -13,30 +15,26 @@ export const HeroSection = () => {
                 <Heart className="h-4 w-4 text-medical-blue" />
                 <span className="text-sm font-medium text-medical-blue">AI-Powered Healthcare</span>
               </div>
-              
               <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
                 Your Personal
                 <span className="bg-gradient-medical bg-clip-text text-transparent"> Health</span>
                 <br />
                 Assistant
               </h1>
-              
               <p className="text-lg text-muted-foreground max-w-md">
                 Get instant health insights, symptom analysis, and trusted medical information 
                 powered by advanced AI technology.
               </p>
             </div>
-
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="medical" size="xl" className="group">
+              <Button variant="medical" size="xl" className="group" onClick={() => navigate('/chatbot')}>
                 <MessageCircle className="h-5 w-5 group-hover:animate-pulse" />
+                AI Chat
+              </Button>
+              <Button variant="outline" size="xl" onClick={() => navigate('/chatbot')}>
                 Start Health Chat
               </Button>
-              <Button variant="outline" size="xl">
-                Explore Services
-              </Button>
             </div>
-
             <div className="grid grid-cols-3 gap-6 pt-8">
               <div className="text-center">
                 <div className="flex items-center justify-center w-12 h-12 mx-auto mb-2 rounded-lg bg-medical-blue/10">
@@ -58,17 +56,15 @@ export const HeroSection = () => {
               </div>
             </div>
           </div>
-
           <div className="relative lg:block hidden">
             <div className="relative">
               <img 
                 src={heroImage} 
-                alt="HealthHabit AI Assistant" 
+                alt="HealthWise AI Assistant" 
                 className="w-full h-auto rounded-2xl shadow-elevated"
               />
               <div className="absolute inset-0 bg-gradient-trust rounded-2xl"></div>
             </div>
-            
             {/* Floating cards */}
             <div className="absolute -top-4 -left-4 p-4 bg-card rounded-xl shadow-medical border animate-pulse-glow">
               <div className="flex items-center gap-2">
@@ -76,7 +72,6 @@ export const HeroSection = () => {
                 <span className="text-sm font-medium">AI Assistant Online</span>
               </div>
             </div>
-            
             <div className="absolute -bottom-4 -right-4 p-4 bg-card rounded-xl shadow-medical border">
               <div className="text-center">
                 <p className="text-2xl font-bold text-medical-blue">24/7</p>
@@ -86,7 +81,6 @@ export const HeroSection = () => {
           </div>
         </div>
       </div>
-      
       {/* Background decorations */}
       <div className="absolute top-1/4 left-0 w-32 h-32 bg-medical-blue/5 rounded-full blur-3xl"></div>
       <div className="absolute bottom-1/4 right-0 w-40 h-40 bg-medical-green/5 rounded-full blur-3xl"></div>

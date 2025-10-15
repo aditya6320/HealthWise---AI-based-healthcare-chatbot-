@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Shield
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const services = [
   {
@@ -20,43 +21,58 @@ const services = [
     features: ["Smart symptom checker", "Risk assessment", "Treatment suggestions"]
   },
   {
-    icon: FileText,
-    title: "Disease Information",
-    description: "Comprehensive information about diseases, conditions, and medical terminology.",
-    color: "medical-green",
-    features: ["Medical encyclopedia", "Condition explanations", "Prevention tips"]
-  },
-  {
-    icon: Pill,
-    title: "Medicine Details",
-    description: "Complete medication information including dosage, side effects, and interactions.",
-    color: "medical-teal",
-    features: ["Drug database", "Interaction checker", "Dosage calculator"]
-  },
-  {
     icon: MapPin,
     title: "Find Hospitals",
     description: "Locate nearby hospitals, clinics, and healthcare facilities in your area.",
     color: "trust-blue",
     features: ["Location-based search", "Reviews & ratings", "Contact information"]
   },
+  // Static feature listings (non-interactive)
+  {
+    icon: FileText,
+    title: "Disease Information",
+    description: "Comprehensive information about diseases, conditions, and medical terminology.",
+    color: "medical-green",
+    features: ["Medical encyclopedia", "Condition explanations", "Prevention tips"],
+    isStatic: true
+  },
+  {
+    icon: Pill,
+    title: "Medicine Details",
+    description: "Complete medication information including dosage, side effects, and interactions.",
+    color: "medical-teal",
+    features: ["Drug database", "Interaction checker", "Dosage calculator"],
+    isStatic: true
+  },
   {
     icon: Calendar,
     title: "Appointment Booking",
     description: "Schedule appointments with healthcare providers seamlessly.",
     color: "medical-blue",
-    features: ["Online booking", "Reminder system", "Provider matching"]
+    features: ["Online booking", "Reminder system", "Provider matching"],
+    isStatic: true
   },
   {
     icon: Shield,
     title: "Health Records",
     description: "Secure storage and management of your personal health information.",
     color: "medical-green",
-    features: ["Secure storage", "Easy access", "Data insights"]
+    features: ["Secure storage", "Easy access", "Data insights"],
+    isStatic: true
   }
 ];
 
 export const ServicesSection = () => {
+  const navigate = useNavigate();
+
+  const handleServiceClick = (serviceTitle: string) => {
+    if (serviceTitle === "Find Hospitals") {
+      navigate('/hospital-finder');
+    } else if (serviceTitle === "Symptom Analysis") {
+      navigate('/symptom-analysis');
+    }
+  };
+
   return (
     <section id="services" className="py-20 bg-background">
       <div className="container">
@@ -107,11 +123,22 @@ export const ServicesSection = () => {
                       </li>
                     ))}
                   </ul>
-
-                  <Button variant="ghost" className="w-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    Get Started
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                  
+                  {!service.isStatic && (
+                    <Button 
+                      variant="ghost" 
+                      className="group flex items-center gap-2 text-primary hover:text-primary/80"
+                      onClick={() => handleServiceClick(service.title)}
+                    >
+                      Get Started
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  )}
+                  {service.isStatic && (
+                    <div className="text-sm text-muted-foreground font-medium pt-2">
+                      Feature Preview
+                    </div>
+                  )}
                 </div>
               </Card>
             );
@@ -119,10 +146,7 @@ export const ServicesSection = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="medical" size="lg">
-            View All Services
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          <p className="text-muted-foreground">Healthcare services overview</p>
         </div>
       </div>
     </section>

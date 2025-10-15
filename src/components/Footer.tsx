@@ -11,7 +11,7 @@ export const Footer = () => {
                 <Stethoscope className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">HealthHabit</h3>
+                <h3 className="text-xl font-bold">HealthWise</h3>
                 <p className="text-sm text-background/70">Your Health Assistant</p>
               </div>
             </div>
@@ -35,8 +35,7 @@ export const Footer = () => {
             <h4 className="font-semibold">Features</h4>
             <ul className="space-y-2 text-sm text-background/70">
               <li>AI Health Chat</li>
-              <li>Appointment Booking</li>
-              <li>Health Records</li>
+              <li>Feature Previews</li>
               <li>Emergency Services</li>
             </ul>
           </div>
@@ -62,7 +61,7 @@ export const Footer = () => {
 
         <div className="border-t border-background/20 mt-8 pt-8 text-center">
           <p className="text-sm text-background/70">
-            © 2024 HealthHabit. All rights reserved. | 
+            © 2025 HealthWise. All rights reserved. | 
             <span className="text-background/50"> This is not a substitute for professional medical advice.</span>
           </p>
         </div>

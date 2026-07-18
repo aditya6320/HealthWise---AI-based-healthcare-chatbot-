@@ -27,8 +27,8 @@ npm run start
 ```
 
 ## 📱 **Access Points**
-- **Frontend**: http://localhost:5173 (React development)
-- **Production**: http://localhost:3001 (Built app + API)
+- **Frontend(React Development)**: http://localhost:5173
+- **Production (Built App + API)**: http://localhost:3001
 - **API Health**: http://localhost:3001/api/health
 - **Chat API**: http://localhost:3001/api/chat
 
